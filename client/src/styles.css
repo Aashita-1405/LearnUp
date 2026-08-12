@@ -1,0 +1,142 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #0f172a;
+  background: linear-gradient(135deg, #f5f7ff, #eefaf6);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button, input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+}
+
+.brand {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+nav {
+  display: flex;
+  gap: 10px;
+}
+
+nav button,
+.auth-card button,
+.profile-card button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: #e2e8f0;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+nav button.active,
+.auth-card button,
+.profile-card button {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+}
+
+.card-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+}
+
+.auth-card,
+.profile-card {
+  width: min(100%, 440px);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+  padding: 28px;
+}
+
+.auth-card h2,
+.profile-card h2 {
+  margin-top: 0;
+}
+
+.auth-card input {
+  width: 100%;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.auth-card button,
+.profile-card button {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.switch-text {
+  text-align: center;
+  color: #475569;
+}
+
+.inline-btn {
+  background: transparent !important;
+  color: #2563eb !important;
+  width: auto !important; 
+  padding: 0 !important;
+  margin-left: 6px;
+}
+
+.message-box {
+  margin-top: 20px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 600;
+}
+
+.profile-box {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.profile-box pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
