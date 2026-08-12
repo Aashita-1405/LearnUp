@@ -1,0 +1,150 @@
+const { db } = require('./db');
+
+const sampleCourses = [
+  {
+    title: 'React for Beginners',
+    category: 'Development',
+    level: 'Beginner',
+    rating: 4.8,
+    students: '18k',
+    price: 49,
+    duration: '6h 30m',
+    lessons: 28,
+    description: 'Build a real product with React, hooks, routing, and modern patterns for frontend work.',
+    tutor_name: 'John Smith',
+    tutor_email: 'john.smith@learnup.com',
+    tutor_bio: 'Senior Frontend Engineer with 10+ years of React experience',
+    tutor_expertise: 'React, JavaScript, Web Development',
+    start_date: '2026-08-20',
+    schedule: 'Mondays & Wednesdays, 7 PM - 8:30 PM (EST)',
+    first_class_time: '2026-08-20 at 7:00 PM EST',
+  },
+  {
+    title: 'JavaScript Mastery',
+    category: 'Development',
+    level: 'Intermediate',
+    rating: 4.9,
+    students: '32k',
+    price: 69,
+    duration: '9h 10m',
+    lessons: 42,
+    description: 'Master JavaScript from foundation to advanced APIs, async patterns, and browser architecture.',
+    tutor_name: 'Sarah Johnson',
+    tutor_email: 'sarah.johnson@learnup.com',
+    tutor_bio: 'Full Stack Developer & JavaScript Trainer with 8+ years experience',
+    tutor_expertise: 'JavaScript, Node.js, Web APIs, Testing',
+    start_date: '2026-08-25',
+    schedule: 'Tuesdays & Thursdays, 6 PM - 7:30 PM (EST)',
+    first_class_time: '2026-08-25 at 6:00 PM EST',
+  },
+  {
+    title: 'UI/UX Design Fundamentals',
+    category: 'Design',
+    level: 'Beginner',
+    rating: 4.7,
+    students: '14k',
+    price: 39,
+    duration: '5h 15m',
+    lessons: 18,
+    description: 'Design interfaces that convert by learning layouts, hierarchy, and user flow design.',
+    tutor_name: 'Emily Chen',
+    tutor_email: 'emily.chen@learnup.com',
+    tutor_bio: 'UX/UI Designer with award-winning portfolio from top tech companies',
+    tutor_expertise: 'UI Design, UX Research, Figma, Design Thinking',
+    start_date: '2026-08-22',
+    schedule: 'Saturdays, 10 AM - 12 PM (EST)',
+    first_class_time: '2026-08-22 at 10:00 AM EST',
+  },
+  {
+    title: 'Python for Data Science',
+    category: 'Data Science',
+    level: 'Intermediate',
+    rating: 4.8,
+    students: '21k',
+    price: 59,
+    duration: '8h 20m',
+    lessons: 36,
+    description: 'Analyze data, visualize insights, and automate workflows with Python and notebooks.',
+    tutor_name: 'Dr. Michael Torres',
+    tutor_email: 'michael.torres@learnup.com',
+    tutor_bio: 'Data Scientist & PhD in Machine Learning from Stanford University',
+    tutor_expertise: 'Python, Data Analysis, Machine Learning, Statistics',
+    start_date: '2026-08-21',
+    schedule: 'Wednesdays & Fridays, 8 PM - 9:30 PM (EST)',
+    first_class_time: '2026-08-21 at 8:00 PM EST',
+  },
+  {
+    title: 'Marketing Essentials',
+    category: 'Marketing',
+    level: 'Beginner',
+    rating: 4.6,
+    students: '12k',
+    price: 35,
+    duration: '4h 05m',
+    lessons: 16,
+    description: 'Build campaigns, understand audiences, and create a scalable digital marketing plan.',
+    tutor_name: 'Lisa Anderson',
+    tutor_email: 'lisa.anderson@learnup.com',
+    tutor_bio: 'Marketing Director with 7+ years in digital marketing and brand growth',
+    tutor_expertise: 'Digital Marketing, Social Media, SEO, Content Strategy',
+    start_date: '2026-08-28',
+    schedule: 'Mondays & Thursdays, 5 PM - 6:30 PM (EST)',
+    first_class_time: '2026-08-28 at 5:00 PM EST',
+  },
+  {
+    title: 'Business Strategy',
+    category: 'Business',
+    level: 'Advanced',
+    rating: 4.9,
+    students: '9k',
+    price: 79,
+    duration: '11h 00m',
+    lessons: 48,
+    description: 'Learn to model markets, define strategy, and drive decisions using practical frameworks.',
+    tutor_name: 'Robert Williams',
+    tutor_email: 'robert.williams@learnup.com',
+    tutor_bio: 'MBA from Harvard Business School, Ex-CEO of Fortune 500 company',
+    tutor_expertise: 'Strategy, Business Model, Finance, Leadership',
+    start_date: '2026-08-27',
+    schedule: 'Sundays, 2 PM - 5 PM (EST)',
+    first_class_time: '2026-08-27 at 2:00 PM EST',
+  },
+];
+
+function seedCourses() {
+  sampleCourses.forEach((course) => {
+    db.run(
+      `INSERT OR IGNORE INTO courses (
+        title, category, level, rating, students, price, duration, lessons, description,
+        tutor_name, tutor_email, tutor_bio, tutor_expertise, start_date, schedule, first_class_time
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        course.title,
+        course.category,
+        course.level,
+        course.rating,
+        course.students,
+        course.price,
+        course.duration,
+        course.lessons,
+        course.description,
+        course.tutor_name,
+        course.tutor_email,
+        course.tutor_bio,
+        course.tutor_expertise,
+        course.start_date,
+        course.schedule,
+        course.first_class_time,
+      ],
+      (err) => {
+        if (err) {
+          console.error('Error seeding course:', course.title, err);
+        } else {
+          console.log('Seeded course:', course.title);
+        }
+      }
+    );
+  });
+}
+
+module.exports = { seedCourses };
