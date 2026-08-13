@@ -68,6 +68,48 @@ function initDb() {
             reject(err);
             return;
           }
+        }
+      );
+
+      db.run(
+        `CREATE TABLE IF NOT EXISTS lessons (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          course_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          description TEXT,
+          duration INTEGER,
+          order_index INTEGER,
+          content_type TEXT DEFAULT 'video',
+          video_url TEXT,
+          materials TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (course_id) REFERENCES courses(id)
+        )`,
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+        }
+      );
+
+      db.run(
+        `CREATE TABLE IF NOT EXISTS lesson_progress (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          lesson_id INTEGER NOT NULL,
+          completed INTEGER DEFAULT 0,
+          completed_at DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          FOREIGN KEY (lesson_id) REFERENCES lessons(id),
+          UNIQUE(user_id, lesson_id)
+        )`,
+        (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
           resolve();
         }
       );

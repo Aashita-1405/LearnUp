@@ -111,6 +111,46 @@ const sampleCourses = [
   },
 ];
 
+const sampleLessons = {
+  'React for Beginners': [
+    { title: 'Introduction to React', description: 'Get started with React basics and JSX', duration: 12, order: 1, video_url: 'https://example.com/react-intro' },
+    { title: 'Components and Props', description: 'Learn how to build reusable components with props', duration: 15, order: 2, video_url: 'https://example.com/react-components' },
+    { title: 'State and Hooks', description: 'Master useState and useEffect hooks', duration: 18, order: 3, video_url: 'https://example.com/react-hooks' },
+    { title: 'Conditional Rendering', description: 'Render components conditionally based on state', duration: 10, order: 4, video_url: 'https://example.com/react-conditional' },
+    { title: 'Lists and Keys', description: 'Render lists efficiently with React keys', duration: 14, order: 5, video_url: 'https://example.com/react-lists' },
+    { title: 'Forms in React', description: 'Handle form inputs and validation', duration: 16, order: 6, video_url: 'https://example.com/react-forms' },
+  ],
+  'JavaScript Mastery': [
+    { title: 'Variables and Data Types', description: 'Understanding var, let, const and primitive types', duration: 20, order: 1, video_url: 'https://example.com/js-variables' },
+    { title: 'Functions and Scope', description: 'Function declarations, arrow functions, and scope chain', duration: 22, order: 2, video_url: 'https://example.com/js-functions' },
+    { title: 'Callbacks and Promises', description: 'Handle asynchronous operations with callbacks and promises', duration: 25, order: 3, video_url: 'https://example.com/js-callbacks' },
+    { title: 'Async/Await', description: 'Modern async syntax for cleaner code', duration: 18, order: 4, video_url: 'https://example.com/js-async' },
+    { title: 'DOM Manipulation', description: 'Interact with the DOM using JavaScript', duration: 20, order: 5, video_url: 'https://example.com/js-dom' },
+  ],
+  'UI/UX Design Fundamentals': [
+    { title: 'Design Principles', description: 'Core principles of visual design and hierarchy', duration: 18, order: 1, video_url: 'https://example.com/design-principles' },
+    { title: 'Color Theory', description: 'Understanding colors and their psychology', duration: 15, order: 2, video_url: 'https://example.com/design-color' },
+    { title: 'Typography', description: 'Choosing and combining fonts effectively', duration: 12, order: 3, video_url: 'https://example.com/design-typography' },
+    { title: 'Wireframing', description: 'Create effective wireframes for interfaces', duration: 20, order: 4, video_url: 'https://example.com/design-wireframing' },
+  ],
+  'Python for Data Science': [
+    { title: 'Python Basics', description: 'Python syntax, variables, and data structures', duration: 25, order: 1, video_url: 'https://example.com/python-basics' },
+    { title: 'NumPy Essentials', description: 'Working with NumPy arrays and operations', duration: 22, order: 2, video_url: 'https://example.com/numpy-essentials' },
+    { title: 'Pandas for Data', description: 'Manipulate data with Pandas DataFrames', duration: 24, order: 3, video_url: 'https://example.com/pandas-data' },
+    { title: 'Data Visualization', description: 'Create beautiful visualizations with Matplotlib', duration: 20, order: 4, video_url: 'https://example.com/matplotlib' },
+  ],
+  'Marketing Essentials': [
+    { title: 'Digital Marketing Basics', description: 'Overview of digital marketing channels', duration: 18, order: 1, video_url: 'https://example.com/marketing-basics' },
+    { title: 'Social Media Strategy', description: 'Build effective social media campaigns', duration: 16, order: 2, video_url: 'https://example.com/social-strategy' },
+    { title: 'SEO Fundamentals', description: 'Optimize content for search engines', duration: 14, order: 3, video_url: 'https://example.com/seo-fundamentals' },
+  ],
+  'Business Strategy': [
+    { title: 'Strategic Planning', description: 'Create effective business strategies', duration: 30, order: 1, video_url: 'https://example.com/strategy-planning' },
+    { title: 'Market Analysis', description: 'Analyze markets and competition', duration: 28, order: 2, video_url: 'https://example.com/market-analysis' },
+    { title: 'Business Models', description: 'Understand and design business models', duration: 32, order: 3, video_url: 'https://example.com/business-models' },
+  ],
+};
+
 function seedCourses() {
   sampleCourses.forEach((course) => {
     db.run(
@@ -147,4 +187,37 @@ function seedCourses() {
   });
 }
 
-module.exports = { seedCourses };
+function seedLessons() {
+  sampleCourses.forEach((course) => {
+    const lessons = sampleLessons[course.title] || [];
+    
+    db.get('SELECT id FROM courses WHERE title = ?', [course.title], (err, courseRow) => {
+      if (err || !courseRow) return;
+      
+      lessons.forEach((lesson) => {
+        db.run(
+          `INSERT OR IGNORE INTO lessons (course_id, title, description, duration, order_index, content_type, video_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            courseRow.id,
+            lesson.title,
+            lesson.description,
+            lesson.duration,
+            lesson.order,
+            'video',
+            lesson.video_url,
+          ],
+          (err) => {
+            if (err) {
+              console.error('Error seeding lesson:', lesson.title, err);
+            } else {
+              console.log('Seeded lesson:', lesson.title, 'for course:', course.title);
+            }
+          }
+        );
+      });
+    });
+  });
+}
+
+module.exports = { seedCourses, seedLessons };

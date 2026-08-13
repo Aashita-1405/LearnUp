@@ -20,6 +20,10 @@ function App() {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [checkoutForm, setCheckoutForm] = useState({ name: '', cardNumber: '', expiry: '', cvv: '' });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [courseLessons, setCourseLessons] = useState([]);
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [courseProgress, setCourseProgress] = useState({});
+  const [lessonLoading, setLessonLoading] = useState(false);
 
   const filteredCourses = allCourses.filter((course) => {
     const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory;
@@ -62,6 +66,74 @@ function App() {
       setEnrolledCourses(data.enrollments || []);
     } catch (error) {
       console.error('Failed to fetch enrollments:', error);
+    }
+  };
+
+  const fetchLessons = async (courseId) => {
+    try {
+      setLessonLoading(true);
+      const response = await fetch(`${API_URL}/courses/${courseId}/lessons`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setCourseLessons(data.lessons || []);
+        if (data.lessons && data.lessons.length > 0) {
+          setSelectedLesson(data.lessons[0]);
+        }
+      } else {
+        setMessage(data.message || 'Failed to load lessons');
+      }
+    } catch (error) {
+      console.error('Failed to fetch lessons:', error);
+      setMessage('Failed to load lessons');
+    } finally {
+      setLessonLoading(false);
+    }
+  };
+
+  const fetchCourseProgress = async (courseId) => {
+    try {
+      const response = await fetch(`${API_URL}/enrollments/${courseId}/progress`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setCourseProgress(prev => ({
+          ...prev,
+          [courseId]: data
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch progress:', error);
+    }
+  };
+
+  const markLessonComplete = async (lessonId) => {
+    try {
+      setIsProcessing(true);
+      const response = await fetch(`${API_URL}/lessons/${lessonId}/complete`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await response.json();
+      
+      if (response.ok) {
+        setMessage('Lesson marked as complete!');
+        if (selectedCourse) {
+          fetchLessons(selectedCourse.id);
+          fetchCourseProgress(selectedCourse.id);
+        }
+      } else {
+        setMessage(data.message || 'Failed to mark lesson complete');
+      }
+    } catch (error) {
+      console.error('Failed to mark lesson complete:', error);
+      setMessage('Error marking lesson complete');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -544,6 +616,122 @@ function App() {
     </section>
   );
 
+  const renderCourseContent = () => {
+    const isEnrolled = enrolledCourses.some(c => c.id === selectedCourse?.id);
+    const progress = courseProgress[selectedCourse?.id];
+
+    if (!isEnrolled) {
+      return (
+        <section className="course-detail">
+          {selectedCourse && (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <h2>Access Course Content</h2>
+              <p>Enroll in this course to view lessons and track your progress.</p>
+              <button onClick={() => handleEnroll(selectedCourse.id)} disabled={isProcessing} className="cta-btn">
+                {isProcessing ? 'Enrolling...' : 'Enroll Now'}
+              </button>
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    return (
+      <section className="course-content">
+        {selectedCourse && (
+          <div className="content-layout">
+            <div className="content-header">
+              <button onClick={() => setView('dashboard')} className="back-btn">← Back to Dashboard</button>
+              <h2>{selectedCourse.title}</h2>
+              {progress && (
+                <div className="progress-bar-container">
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${progress.progress}%` }}></div>
+                  </div>
+                  <p>{progress.progress}% complete ({progress.completedLessons}/{progress.totalLessons} lessons)</p>
+                </div>
+              )}
+            </div>
+
+            <div className="lesson-layout">
+              <aside className="lesson-sidebar">
+                <h3>Course Content</h3>
+                {lessonLoading ? (
+                  <p>Loading lessons...</p>
+                ) : courseLessons.length > 0 ? (
+                  <ul className="lesson-list">
+                    {courseLessons.map((lesson, index) => (
+                      <li key={lesson.id} className={selectedLesson?.id === lesson.id ? 'active' : ''}>
+                        <button 
+                          onClick={() => setSelectedLesson(lesson)}
+                          className="lesson-item"
+                        >
+                          <span className="lesson-number">{index + 1}</span>
+                          <div className="lesson-info">
+                            <p>{lesson.title}</p>
+                            <small>{lesson.duration} min</small>
+                          </div>
+                          {lesson.completed && <span className="lesson-badge">✓</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No lessons available</p>
+                )}
+              </aside>
+
+              <div className="lesson-main">
+                {selectedLesson && (
+                  <>
+                    <div className="lesson-viewer">
+                      <div className="video-placeholder">
+                        <div className="play-button">▶</div>
+                        <p>Video: {selectedLesson.title}</p>
+                        <small>{selectedLesson.duration} minutes</small>
+                        {selectedLesson.video_url && (
+                          <p style={{ fontSize: '12px', marginTop: '10px', color: '#999' }}>
+                            Source: {selectedLesson.video_url}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="lesson-details">
+                      <h3>{selectedLesson.title}</h3>
+                      <p>{selectedLesson.description}</p>
+                      
+                      <div className="lesson-actions">
+                        {selectedLesson.completed ? (
+                          <button disabled style={{ backgroundColor: '#10b981' }}>✓ Completed</button>
+                        ) : (
+                          <button 
+                            onClick={() => markLessonComplete(selectedLesson.id)}
+                            disabled={isProcessing}
+                            className="cta-btn"
+                          >
+                            {isProcessing ? 'Marking...' : 'Mark as Complete'}
+                          </button>
+                        )}
+                      </div>
+
+                      {selectedLesson.materials && (
+                        <div className="lesson-materials">
+                          <h4>Materials</h4>
+                          <p>{selectedLesson.materials}</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  };
+
   const renderDashboard = () => (
     <div className="dashboard-shell">
       <aside className="sidebar">
@@ -573,12 +761,12 @@ function App() {
             <strong>{enrolledCourses.length}</strong>
           </div>
           <div className="progress-card">
-            <span>Completed</span>
-            <strong>0</strong>
+            <span>In progress</span>
+            <strong>{enrolledCourses.filter(c => c.progress > 0 && c.progress < 100).length}</strong>
           </div>
           <div className="progress-card">
-            <span>Certificates</span>
-            <strong>0</strong>
+            <span>Completed</span>
+            <strong>{enrolledCourses.filter(c => c.progress === 100).length}</strong>
           </div>
         </div>
 
@@ -592,8 +780,22 @@ function App() {
                   <h4>{course.title}</h4>
                   <p>{course.category} • {course.level}</p>
                   {course.start_date && <p>Starts: {course.start_date}</p>}
+                  <div className="mini-progress-bar">
+                    <div className="mini-progress-fill" style={{ width: `${course.progress || 0}%` }}></div>
+                  </div>
+                  <small>{course.progress || 0}% complete</small>
                 </div>
-                <button onClick={() => { setSelectedCourse(course); setView('course'); }}>View</button>
+                <button 
+                  onClick={() => { 
+                    setSelectedCourse(course); 
+                    fetchLessons(course.id);
+                    fetchCourseProgress(course.id);
+                    setView('coursecontent'); 
+                  }}
+                  className="cta-btn"
+                >
+                  Continue Learning
+                </button>
               </div>
             ))
           ) : (
@@ -645,6 +847,7 @@ function App() {
       {view === 'signup' && renderAuth()}
       {view === 'login' && renderAuth()}
       {view === 'course' && renderCourse()}
+      {view === 'coursecontent' && auth.user && renderCourseContent()}
       {view === 'cart' && renderCart()}
       {view === 'wishlist' && renderWishlist()}
       {view === 'dashboard' && auth.user ? renderDashboard() : null}

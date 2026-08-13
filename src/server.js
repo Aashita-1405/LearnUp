@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const { db, initDb } = require('./db');
 const { validateSignupInput, createAuthToken, JWT_SECRET } = require('./auth');
 const { sendEnrollmentEmail } = require('./emailService');
-const { seedCourses } = require('./seeder');
+const { seedCourses, seedLessons } = require('./seeder');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -236,9 +236,246 @@ app.get('/api/enrollments', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all lessons for a course
+app.get('/api/courses/:courseId/lessons', authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    // Check if user is enrolled in the course
+    const enrollment = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?',
+        [userId, courseId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ message: 'You are not enrolled in this course' });
+    }
+
+    // Fetch lessons
+    const lessons = await new Promise((resolve, reject) => {
+      db.all(
+        `SELECT l.*, 
+                (SELECT completed FROM lesson_progress WHERE user_id = ? AND lesson_id = l.id) as completed
+         FROM lessons l
+         WHERE l.course_id = ?
+         ORDER BY l.order_index`,
+        [userId, courseId],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        }
+      );
+    });
+
+    return res.json({ lessons });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || 'Failed to fetch lessons' });
+  }
+});
+
+// Get a specific lesson
+app.get('/api/lessons/:lessonId', authenticateToken, async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user.id;
+
+    // Fetch lesson
+    const lesson = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT l.*, 
+                (SELECT completed FROM lesson_progress WHERE user_id = ? AND lesson_id = l.id) as completed
+         FROM lessons l
+         WHERE l.id = ?`,
+        [userId, lessonId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    // Check enrollment
+    const enrollment = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?',
+        [userId, lesson.course_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ message: 'You are not enrolled in this course' });
+    }
+
+    return res.json({ lesson });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || 'Failed to fetch lesson' });
+  }
+});
+
+// Mark lesson as completed
+app.post('/api/lessons/:lessonId/complete', authenticateToken, async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const userId = req.user.id;
+
+    // Get lesson and check enrollment
+    const lesson = await new Promise((resolve, reject) => {
+      db.get('SELECT course_id FROM lessons WHERE id = ?', [lessonId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+
+    if (!lesson) {
+      return res.status(404).json({ message: 'Lesson not found' });
+    }
+
+    const enrollment = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT id FROM enrollments WHERE user_id = ? AND course_id = ?',
+        [userId, lesson.course_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ message: 'You are not enrolled in this course' });
+    }
+
+    // Insert or update lesson progress
+    await new Promise((resolve, reject) => {
+      db.run(
+        `INSERT INTO lesson_progress (user_id, lesson_id, completed, completed_at)
+         VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+         ON CONFLICT(user_id, lesson_id) DO UPDATE SET completed = 1, completed_at = CURRENT_TIMESTAMP`,
+        [userId, lessonId],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // Calculate course progress
+    const totalLessons = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT COUNT(*) as count FROM lessons WHERE course_id = ?',
+        [lesson.course_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    const completedLessons = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT COUNT(*) as count FROM lesson_progress 
+         WHERE user_id = ? AND lesson_id IN (SELECT id FROM lessons WHERE course_id = ?) AND completed = 1`,
+        [userId, lesson.course_id],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row.count);
+        }
+      );
+    });
+
+    const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+    // Update enrollment progress
+    await new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE enrollments SET progress = ? WHERE user_id = ? AND course_id = ?',
+        [progressPercentage, userId, lesson.course_id],
+        function (err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    return res.json({
+      message: 'Lesson marked as completed',
+      progress: progressPercentage,
+      completed: completedLessons,
+      total: totalLessons,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || 'Failed to mark lesson as completed' });
+  }
+});
+
+// Get course progress
+app.get('/api/enrollments/:courseId/progress', authenticateToken, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    // Check enrollment
+    const enrollment = await new Promise((resolve, reject) => {
+      db.get(
+        'SELECT progress FROM enrollments WHERE user_id = ? AND course_id = ?',
+        [userId, courseId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ message: 'You are not enrolled in this course' });
+    }
+
+    // Get lesson stats
+    const stats = await new Promise((resolve, reject) => {
+      db.get(
+        `SELECT 
+           COUNT(l.id) as total_lessons,
+           (SELECT COUNT(*) FROM lesson_progress WHERE user_id = ? AND lesson_id IN (SELECT id FROM lessons WHERE course_id = ?) AND completed = 1) as completed_lessons
+         FROM lessons l
+         WHERE l.course_id = ?`,
+        [userId, courseId, courseId],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    return res.json({
+      courseId,
+      progress: enrollment.progress,
+      totalLessons: stats.total_lessons,
+      completedLessons: stats.completed_lessons,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: error.message || 'Failed to fetch progress' });
+  }
+});
+
 async function startServer() {
   await initDb();
   seedCourses();
+  seedLessons();
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
